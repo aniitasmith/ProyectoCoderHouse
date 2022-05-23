@@ -10,18 +10,18 @@ let carrito = localStorage.getItem("carrito") || [];
 let listaDeItemsMostrados = listaDeItems;
 
 // Genera el HTLM en forma de card de los productos en venta.
-const cardProductoEnVenta = (producto) => {
+const cardProductoEnVenta = ({id, imagen, nombre ,precio, descripcion,stock}) => {
     return (
         `
         <div class="card" style="width: 18rem">
-            <img src="${producto.imagen}" class="card-img-top imagen-producto" alt="${producto.nombre}">
+            <img src="${imagen}" class="card-img-top imagen-producto" alt="${nombre}">
             <div class="card-body detalles-producto">
-                <h5 class="card-title">${producto.nombre}</h5>
-                <h6 class="card-text">Precio : ${producto.precio} $</h6>
-                <p class="card-text">${producto.descripcion}.</p>
+                <h5 class="card-title">${nombre}</h5>
+                <h6 class="card-text">Precio : ${precio} $</h6>
+                <p class="card-text">${descripcion}.</p>
                 <div class="compra-producto">
-                    <input id= "cantidad-${producto.id}" type="number"  min="1" max=${producto.stock}>
-                    <button onclick=agregarItemAlCarrito(${producto.id}) class="btn btn-warning texto-blanco">Comprar</button>
+                    <input id= "cantidad-${id}" type="number"  min="1" max=${stock}>
+                    <button onclick=agregarItemAlCarrito(${id}) class="btn btn-warning texto-blanco">Comprar</button>
                 </div>
             </div>
         </div>
@@ -29,17 +29,17 @@ const cardProductoEnVenta = (producto) => {
 };
 
 // Genera el HTLM del modal de los productos seleccionados.
-const armarCarritoPorArticulo = (articuloEnCarrito) => {
-    const producto = listaDeItems.find(item => item.id === articuloEnCarrito.id);
+const armarCarritoPorArticulo = ({id, cantidad}) => {
+    const {nombre, precio} = listaDeItems.find(item => item.id === id); 
     document.getElementById("carrito").style.visibility = "visible";
     mensajeCompra.style.visibility = "hidden";
 
     return (
         `
          <tr>
-            <th scope = "row" > ${producto.nombre} </th>
-             <td> ${articuloEnCarrito.cantidad} unidades </td> 
-             <td > ${producto.precio * articuloEnCarrito.cantidad} $ </td>
+            <th scope = "row" > ${nombre} </th>
+             <td> ${cantidad} unidades </td> 
+             <td > ${precio * cantidad} $ </td>
              </tr>`)
 };
 
@@ -52,44 +52,44 @@ const cargarItems = (listaArticulos, elemento, esCarrito) => {
         elemento.innerHTML = acumulador;
     })
 };
+
+//genera calculo subtotal por precuto
+const subtotalPorProducto = (elemento) => ((listaDeItems.find(item => item.id === elemento.id)).precio) * elemento.cantidad
+
 // genera los calculos finales de la factura.
 const calculoFinalCarrito = () => {
-    let subtotal = carrito.reduce((acc, el) => acc + ((listaDeItems.find(item => item.id === el.id)).precio) * el.cantidad, 0);
+    let subtotal = carrito.reduce((acc, el) => acc + subtotalPorProducto(el), 0);
     let iva = subtotal * 0.21;
     let total = subtotal + iva;
-    return { subtotal: subtotal, iva: iva, total: total };
+    return { subtotal, iva, total };
 }
 
 // Agrega el item al MODAL del carrito o actualiza la cantidad si esta previamente agregado, y genera la facturacion. 
 const agregarItemAlCarrito = (id) => {
     const buscarItemEnElCarrito = carrito.findIndex(el => el.id === id);
 
-    const cantidadPedida = parseInt(document.getElementById(`cantidad-${id}`).value);
+    const cantidad = parseInt(document.getElementById(`cantidad-${id}`).value);
 
-    if (buscarItemEnElCarrito === -1) {
-        carrito.push({ id: id, cantidad: cantidadPedida });
-    } else {
-        carrito[buscarItemEnElCarrito].cantidad = carrito[buscarItemEnElCarrito].cantidad + cantidadPedida;
-    }
+    (buscarItemEnElCarrito === -1) ? carrito.push({ id, cantidad }) : carrito[buscarItemEnElCarrito].cantidad += cantidad;
 
-    let facturacion = calculoFinalCarrito();
+    const {subtotal, total, iva} = calculoFinalCarrito(); 
 
     let facturarCarrito = (
         `
      <tr>
         <th scope = "row" > SUBTOTAL </th>
          <td>   </td> 
-         <td > ${facturacion.subtotal.toFixed(2)} $ </td>
+         <td > ${subtotal.toFixed(2)} $ </td>
          </tr>
          <tr>
         <th scope = "row" > IVA </th>
          <td>   </td> 
-         <td > ${facturacion.iva.toFixed(2)} $ </td>
+         <td > ${iva.toFixed(2)} $ </td>
          </tr>
          <tr>
         <th scope = "row" > TOTAL </th>
          <td>   </td> 
-         <td > ${facturacion.total.toFixed(2)} $ </td>
+         <td > ${total.toFixed(2)} $ </td>
          </tr>`)
     facturar.innerHTML = facturarCarrito
 
@@ -105,7 +105,7 @@ const borrarCarrito = () => {
 }
 
 // Mensaje de compra generada.
-const compraFinalizada = () => {
+const compraFinalizada = () => {3
     document.getElementById("carrito").style.visibility = "hidden";
     mensajeCompra.style.visibility = "visible";
     facturar.innerHTML = ""

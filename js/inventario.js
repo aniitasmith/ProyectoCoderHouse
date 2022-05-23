@@ -97,6 +97,8 @@ const stockItems = [{
     }
 ];
 
+
+
 //guardar en LocalStorage el inventario.
 const guardarLocal = (id, producto) => { localStorage.setItem(id, producto) };
 guardarLocal("listaDeItems", JSON.stringify(stockItems));
