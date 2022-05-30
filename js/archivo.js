@@ -11,10 +11,25 @@ tabla.setAttribute("id","carrito");
 tablaCarrito.setAttribute("id","tablaCarrito");
 facturar.setAttribute("id","cerrarTabla");
 
-//cargar el inventario de producto.
-const listaDeItems = JSON.parse(localStorage.getItem("listaDeItems"));
+//cargar el inventario de producto con fetch y localstorage.
+let listaDeItems, listaDeItemsMostrados;
+
+const traerInventario = () => {
+    listaDeItems = JSON.parse(localStorage.getItem("listaDeItems"));
+    listaDeItemsMostrados = listaDeItems;
+    if (!listaDeItems){
+        fetch('data.json')
+        .then( (res => res.json()))
+        .then (data => {
+            listaDeItems = data;
+            localStorage.setItem("listaDeItems", JSON.stringify(data));
+            cargarItems(data, contenedor,false);
+            
+        })
+    } else {cargarItems(listaDeItemsMostrados, contenedor,false)}
+    }
+
 let carrito = localStorage.getItem("carrito") || [];
-let listaDeItemsMostrados = listaDeItems;
 
 tabla.innerHTML = 
 `
@@ -171,4 +186,4 @@ verCarrito.addEventListener("click", () => {
 });
 
 //Carga de Items a la pagina principal. 
-cargarItems(listaDeItemsMostrados, contenedor, false);
+traerInventario()
