@@ -29,7 +29,7 @@ const traerInventario = () => {
     } else {cargarItems(listaDeItemsMostrados, contenedor,false)}
     }
 
-let carrito = localStorage.getItem("carrito") || [];
+let carrito = [];
 
 tabla.innerHTML = 
 `
