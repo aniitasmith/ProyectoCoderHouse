@@ -170,11 +170,6 @@ const borrarCarrito = () => {
     facturar.innerHTML = "";
 }
 
-const reintegrarStock = () =>{
-    carrito.forEach(el=> {
-        actualizarStock(el.id,-cantidad)})
-}
-
 // Resta del stock al generar la compra.
 const compraFinalizada = () => {
 facturar.innerHTML = "";
@@ -202,7 +197,6 @@ verCarrito.addEventListener("click", () => {
           })
         } else if (result.isDenied) {
             borrarCarrito();
-            reintegrarStock();
           Swal.fire({
               icon: 'error',
             title: 'Su compra fue cancelada.'
