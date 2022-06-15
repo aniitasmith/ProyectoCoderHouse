@@ -1,13 +1,45 @@
-const contenedor = document.getElementById("listaDeItems");
-const tablaCarrito = document.getElementById("tablaCarrito");
-const facturar = document.getElementById("cerrarTabla");
-const botonBorrarCarrito = document.getElementById("borrarCarrito");
-const botonFinalizarCompra = document.getElementById("finalizarCompra");
-const mensajeCompra = document.getElementById("mensajeCompra");
+const contenedor = document.getElementById("listaDeItems");  
+const verCarrito = document.getElementById("verCarrito");
 
-const listaDeItems = JSON.parse(localStorage.getItem("listaDeItems"));
-let carrito = localStorage.getItem("carrito") || [];
-let listaDeItemsMostrados = listaDeItems;
+// Se crean los elementos necesarios para armar el carrito.
+let tabla = document.createElement("table");
+let tablaCarrito =document.createElement("tbody");
+let facturar =document.createElement("tbody");
+
+// Agregando los id de los elementos del carrito.
+tabla.setAttribute("id","carrito");
+tablaCarrito.setAttribute("id","tablaCarrito");
+facturar.setAttribute("id","cerrarTabla");
+
+// Cargar el inventario de producto con fetch y localstorage.
+let listaDeItems, listaDeItemsMostrados;
+
+const traerInventario = () => {
+    listaDeItems = JSON.parse(localStorage.getItem("listaDeItems"));
+    listaDeItemsMostrados = listaDeItems;
+    if (!listaDeItems){
+        fetch('data.json')
+        .then( (res => res.json()))
+        .then (data => {
+            listaDeItems = data;
+            localStorage.setItem("listaDeItems", JSON.stringify(data));
+            cargarItems(data, contenedor,false);
+            
+        })
+    } else {cargarItems(listaDeItemsMostrados, contenedor,false)}
+    }
+
+let carrito = JSON.parse(localStorage.getItem("carrito")) || [] ;
+
+tabla.innerHTML = 
+`
+ <thead>
+ <tr>
+    <th class="topeDeTabla" scope="col">Nombre</th>
+    <th class="topeDeTabla" scope="col">Cantidad</th>
+    <th class="topeDeTabla" scope="col">Precio</th>
+    </tr>
+</thead>`;
 
 // Genera el HTLM en forma de card de los productos en venta.
 const cardProductoEnVenta = ({id, imagen, nombre ,precio, descripcion,stock}) => {
@@ -20,31 +52,28 @@ const cardProductoEnVenta = ({id, imagen, nombre ,precio, descripcion,stock}) =>
                 <h6 class="card-text">Precio : ${precio} $</h6>
                 <p class="card-text">${descripcion}.</p>
                 <div class="compra-producto">
-                    <input id= "cantidad-${id}" type="number"  min="1" max=${stock}>
-                    <button onclick=agregarItemAlCarrito(${id}) class="btn btn-warning texto-blanco">Comprar</button>
+                    <input onChange=validarCantidad(this,${id}) id="cantidad-${id}" type="number" min="0" max=${stock} value="1">
+                    <button id="btn-${id}" onclick=agregarItemAlCarrito(${id}) class="btn btn-warning texto-blanco">Comprar</button>
                 </div>
             </div>
         </div>
-    `);
+        `);
 };
 
-// Genera el HTLM del modal de los productos seleccionados.
+// Genera el HTLM de los item en el carrito.
 const armarCarritoPorArticulo = ({id, cantidad}) => {
     const {nombre, precio} = listaDeItems.find(item => item.id === id); 
-    document.getElementById("carrito").style.visibility = "visible";
-    mensajeCompra.style.visibility = "hidden";
-
     return (
         `
-         <tr>
-            <th scope = "row" > ${nombre} </th>
-             <td> ${cantidad} unidades </td> 
-             <td > ${precio * cantidad} $ </td>
-             </tr>`)
+        <tr>
+            <td> ${nombre} </td>
+            <td> ${cantidad} unidades </td> 
+            <td > ${precio * cantidad} $ </td>
+        </tr>
+             `)
 };
 
-//genera el HTML de la lista de articulos en el elemento indicado (contenedor o carrito).
-
+// Genera el HTML de la lista de articulos en el elemento indicado (contenedor o carrito).
 const cargarItems = (listaArticulos, elemento, esCarrito) => {
     let acumulador = "";
     listaArticulos.forEach((el) => {
@@ -53,27 +82,27 @@ const cargarItems = (listaArticulos, elemento, esCarrito) => {
     })
 };
 
-//genera calculo subtotal por precuto
+// Genera calculo subtotal por producto.
 const subtotalPorProducto = (elemento) => ((listaDeItems.find(item => item.id === elemento.id)).precio) * elemento.cantidad
 
-// genera los calculos finales de la factura.
+// Genera los calculos finales de la factura.
 const calculoFinalCarrito = () => {
     let subtotal = carrito.reduce((acc, el) => acc + subtotalPorProducto(el), 0);
     let iva = subtotal * 0.21;
     let total = subtotal + iva;
-    return { subtotal, iva, total };
+    return { subtotal, iva, total};
 }
 
-// Agrega el item al MODAL del carrito o actualiza la cantidad si esta previamente agregado, y genera la facturacion. 
-const agregarItemAlCarrito = (id) => {
+// Busca item en el carrito.
+const buscadorDeItem = (id, cantidad) => {
     const buscarItemEnElCarrito = carrito.findIndex(el => el.id === id);
-
-    const cantidad = parseInt(document.getElementById(`cantidad-${id}`).value);
-
     (buscarItemEnElCarrito === -1) ? carrito.push({ id, cantidad }) : carrito[buscarItemEnElCarrito].cantidad += cantidad;
+    localStorage.setItem("carrito", JSON.stringify(carrito));
+}
 
+// Genera el final de la facturacion.
+const actualizarFacturacion= () => {
     const {subtotal, total, iva} = calculoFinalCarrito(); 
-
     let facturarCarrito = (
         `
      <tr>
@@ -92,27 +121,94 @@ const agregarItemAlCarrito = (id) => {
          <td > ${total.toFixed(2)} $ </td>
          </tr>`)
     facturar.innerHTML = facturarCarrito
+}
 
+// Permite validar que la cantidad ingresada corresponda con el stock.
+const validarCantidad = (e,id) => {
+    const cantidadInput= parseInt(e.value);
+    const item = listaDeItems.find(el => el.id === id);
+    if (cantidadInput > parseInt(item.stock) || cantidadInput <= 0){
+        e.value = 0;
+        Swal.fire({
+            icon: 'error',
+            title:`El stock de ${item.nombre} es ${item.stock} unidades.
+             Intente con otra cantidad.`
+        })
+    }
+}
+
+// Actualiza la cantidad del stock en la lista de Item e inhabilita el boton de compra.
+const actualizarStock = (id, cantidad) => {
+    const item = listaDeItems.find(el => el.id === id);
+    item.stock-= cantidad
+    document.getElementById(`btn-${id}`).disabled = parseInt(item.stock) <= 0;
+}
+
+// Agrega el item al carrito o actualiza la cantidad si esta previamente agregado, y genera la facturacion. 
+const agregarItemAlCarrito = (id) => {
+    const cantidadInput = document.getElementById(`cantidad-${id}`);
+    const cantidad = parseInt(cantidadInput.value);
+    validarCantidad(cantidadInput, id);
+    buscadorDeItem(id, cantidad);
+    actualizarStock(id,cantidad);
+    actualizarFacturacion();
+    Swal.fire({
+        icon: 'success',
+        title: 'Producto agregado al carrito',
+        timer: 1200,
+        showConfirmButton: false
+    });
+    cantidadInput.value = 0;
     cargarItems(carrito, tablaCarrito, true);
 }
 
 // Elimina los articulos en carrito.
 const borrarCarrito = () => {
-    carrito = []
-    tablaCarrito.innerHTML = ""
+    carrito = [];
+    tablaCarrito.innerHTML = "";
     facturacion = {};
     facturar.innerHTML = "";
 }
 
-// Mensaje de compra generada.
-const compraFinalizada = () => {3
-    document.getElementById("carrito").style.visibility = "hidden";
-    mensajeCompra.style.visibility = "visible";
-    facturar.innerHTML = ""
+// Resta del stock al generar la compra.
+const compraFinalizada = () => {
+facturar.innerHTML = "";
     borrarCarrito();
+    localStorage.removeItem("carrito");
 }
-botonBorrarCarrito.addEventListener("click", borrarCarrito);
-botonFinalizarCompra.addEventListener("click", compraFinalizada);
 
-//Carga de Items a la pagina principal. 
-cargarItems(listaDeItemsMostrados, contenedor, false);
+// Mostrar carrito al clickear el boton.
+verCarrito.addEventListener("click", () => {
+    tabla.appendChild(tablaCarrito);
+    tabla.appendChild(facturar);
+    Swal.fire({
+        title: '<strong>CARRITO</strong>',
+        html: tabla,
+        showDenyButton: true,
+        showCancelButton: true,
+        confirmButtonText: 'Comprar',
+        denyButtonText: `Borrar Carrito`,
+      }).then((result) => {
+          if (result.isConfirmed) {
+            compraFinalizada();
+            Swal.fire({
+                icon: 'success',
+                title: 'Su compra fue procesada!'
+          })
+        } else if (result.isDenied) {
+            borrarCarrito();
+          Swal.fire({
+              icon: 'error',
+            title: 'Su compra fue cancelada.'
+            })
+        }
+      })
+});
+
+// Carga de Items a la pagina principal. 
+
+traerInventario();
+cargarItems(carrito, tablaCarrito, true);
+carrito.forEach(el=> {
+    actualizarStock(el.id,el.cantidad)});
+actualizarFacturacion();
