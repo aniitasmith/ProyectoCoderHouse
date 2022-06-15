@@ -29,7 +29,7 @@ const traerInventario = () => {
     } else {cargarItems(listaDeItemsMostrados, contenedor,false)}
     }
 
-let carrito = [];
+let carrito = JSON.parse(localStorage.getItem("carrito")) || [] ;
 
 tabla.innerHTML = 
 `
@@ -97,6 +97,7 @@ const calculoFinalCarrito = () => {
 const buscadorDeItem = (id, cantidad) => {
     const buscarItemEnElCarrito = carrito.findIndex(el => el.id === id);
     (buscarItemEnElCarrito === -1) ? carrito.push({ id, cantidad }) : carrito[buscarItemEnElCarrito].cantidad += cantidad;
+    localStorage.setItem("carrito", JSON.stringify(carrito));
 }
 
 // Genera el final de la facturacion.
@@ -169,15 +170,16 @@ const borrarCarrito = () => {
     facturar.innerHTML = "";
 }
 
+const reintegrarStock = () =>{
+    carrito.forEach(el=> {
+        actualizarStock(el.id,-cantidad)})
+}
+
 // Resta del stock al generar la compra.
 const compraFinalizada = () => {
-    listaDeItems.forEach(el => { 
-        carrito.forEach(item => 
-            {el.id === item.id && (el.stock -= item.cantidad);
-    })
-})
 facturar.innerHTML = "";
-    borrarCarrito()
+    borrarCarrito();
+    localStorage.removeItem("carrito");
 }
 
 // Mostrar carrito al clickear el boton.
@@ -200,6 +202,7 @@ verCarrito.addEventListener("click", () => {
           })
         } else if (result.isDenied) {
             borrarCarrito();
+            reintegrarStock();
           Swal.fire({
               icon: 'error',
             title: 'Su compra fue cancelada.'
@@ -209,4 +212,9 @@ verCarrito.addEventListener("click", () => {
 });
 
 // Carga de Items a la pagina principal. 
-traerInventario()
+
+traerInventario();
+cargarItems(carrito, tablaCarrito, true);
+carrito.forEach(el=> {
+    actualizarStock(el.id,el.cantidad)});
+actualizarFacturacion();
